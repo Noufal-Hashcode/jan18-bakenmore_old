@@ -1,0 +1,18 @@
+<odoo>
+    <!-- add inventory property in product category -->
+    <record id="product_category_form_view_inherit_inventory_property" model="ir.ui.view">
+        <field name="name">product.category.form.view.inherit.inventory.property</field>
+        <field name="model">product.category</field>
+        <field name="inherit_id" ref="product.product_category_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form/sheet/group[1]" position="after">
+                <group>
+                    <group>
+                        <field name="inventory_property" />
+                    </group>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

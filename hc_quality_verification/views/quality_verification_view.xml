@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+
+<odoo>
+    <record id="view_quality_control_form_inherit" model="ir.ui.view">
+        <field name="name">quality_control_form.inherit</field>
+        <field name="model">quality.check</field>
+        <field name="inherit_id" ref="quality_control.quality_check_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//button[@name='do_alert']" position="after" >
+                <button name="action_verified" string="Verify"  attrs="{'invisible':[('quality_state', 'in', ['verified','none'])]}" type="object" groups="quality.group_quality_manager"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

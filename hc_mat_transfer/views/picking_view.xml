@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+	<data>
+		<record id="import_picking_wizard1" model="ir.ui.view">
+			<field name="name">wizard for import picking </field>
+			<field name="model">import.picking1</field>
+			<field name="arch" type="xml">
+				<form string="Import Picking">
+					<group>
+						<group>
+							<field name="file" filename="name" />
+						</group>
+						<group>
+							<button name="download_sample_file" string="Download Sample File" type="object" class="oe_highlight"/>
+						</group>
+					</group>
+					<group>
+						<group>
+							<field name="picking_type_id" />
+						</group>
+						<group>
+							<field name="location_id" groups="stock.group_stock_multi_locations" required="1"/>
+							<field name="location_dest_id" groups="stock.group_stock_multi_locations" required="1"/>
+							<field name="seq"/>
+						</group>
+					</group>
+					<footer>
+						<button name="import_picking" class="oe_highlight" string="Import"
+							type="object" />
+						<button string="Cancel" class="btn-secondary" special="cancel" />
+					</footer>
+				</form>
+			</field>
+		</record>
+
+		<record id="picking_wizard_action1" model="ir.actions.act_window">
+			<field name="name">Stock Upload</field>
+			<field name="res_model">import.picking1</field>
+			<field name="view_mode">form</field>
+			<field name="target">new</field>
+		</record>
+
+		<menuitem action="picking_wizard_action1" id="picking_wizard_import1"
+			parent="stock.menu_stock_warehouse_mgmt"/>
+
+	</data>
+</odoo>

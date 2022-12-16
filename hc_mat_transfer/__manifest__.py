@@ -20,6 +20,7 @@
         'security/ir.model.access.csv',
         'views/picking_view.xml',
     ],
+    'license': 'OPL-1',
     'installable': True,
     'application': True,
     'auto_install': False,

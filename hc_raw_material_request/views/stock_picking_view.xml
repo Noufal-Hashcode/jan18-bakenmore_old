@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="stock_picking_form_inherited" model="ir.ui.view">
+        <field name="name">Operation Types</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='state']" position="replace">
+                        <field name="state" widget="statusbar" statusbar_visible="draft,waiting_for_approval,confirmed,assigned,done" />
+
+            </xpath>
+                       <xpath expr="//button[@name='action_confirm']" position="after">
+                       <button name="approve" attrs="{'invisible': [('state', 'in', ('draft','confirmed','assigned','done','cancel','waiting'))]}" string="Approve"  class="oe_highlight" type="object" groups="base.group_user"/>
+
+                       </xpath>
+            <xpath expr="//field[@name='picking_type_id']" position="after">
+<field name="is_approval_required"/>
+                       </xpath>
+
+        </field>
+    </record>
+</odoo>
+<!--                    <button name="button_mark_done" attrs="{'invisible': ['|', '|', ('state', 'in', ('draft', 'cancel', 'done', 'to_close')), ('qty_producing', '=', 0), ('move_raw_ids', '!=', [])]}" string="Validate" type="object" class="oe_highlight"-->

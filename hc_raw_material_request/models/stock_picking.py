@@ -144,6 +144,7 @@ class MrpProduction(models.Model):
                 source_location = self.env['stock.location'].search([('name', '=', 'Dry Store')])
                 for i in production.move_raw_ids:
                     if i.product_id.categ_id.name == 'Dry':
+                        picking_type = self.env['stock.picking.type'].search([('sequence_code', '=', 'INT TRF')])
                         move_data_dict = {
                             'name': 'Mo Picking Move',
                             'location_id': picking_type.default_location_src_id.id,
@@ -154,6 +155,7 @@ class MrpProduction(models.Model):
                         }
                         dry_items.append((0, 0,move_data_dict))
                     else:
+                        picking_type = production.picking_type_id
                         move_data_dict = {
                             'name': 'Mo Picking Move',
                             'location_id': picking_type.default_location_src_id.id,
@@ -164,6 +166,8 @@ class MrpProduction(models.Model):
                         }
                         other_item.append((0, 0, move_data_dict))
                 if dry_items:
+                    picking_type = self.env['stock.picking.type'].search([('sequence_code', '=', 'INT TRF')])
+
                     hc_picking = {
                         'picking_type_id': picking_type.id,
                         'location_id': source_location.id,
@@ -176,11 +180,13 @@ class MrpProduction(models.Model):
                     picking_ids.append((0, 0,hc_picking))
                     delivery_count = delivery_count+1
                 if other_item:
+                    picking_type = production.picking_type_id
+
                     hc_picking_other = {
                         'picking_type_id': picking_type.id,
                         'location_id': picking_type.default_location_src_id.id,
                         'location_dest_id': picking_type.default_location_dest_id.id,
-                        'move_ids_without_package': dry_items,
+                        'move_ids_without_package': other_item,
                         'is_approval_required': False,
                         'group_id': production.procurement_group_id.id,
                         'state': 'draft'

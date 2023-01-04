@@ -10,11 +10,11 @@
 
             </xpath>
                        <xpath expr="//button[@name='action_confirm']" position="after">
-                       <button name="approve" attrs="{'invisible': [('state', 'in', ('draft','confirmed','assigned','done','cancel','waiting'))]}" string="Approve"  class="oe_highlight" type="object" groups="base.group_user"/>
+                       <button name="approve"  attrs="{'invisible': [('is_approval_required', '!=',True)]}" string="Approve"  class="oe_highlight" type="object" groups="base.group_user"/>
 
                        </xpath>
             <xpath expr="//field[@name='picking_type_id']" position="after">
-<field name="is_approval_required"/>
+<field name="is_approval_required" invisible="1"/>
                        </xpath>
 
         </field>

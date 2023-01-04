@@ -21,7 +21,14 @@ class StockPicking(models.Model):
                  " * Ready: The transfer is ready to be processed.\n(a) The shipping policy is \"As soon as possible\": at least one product has been reserved.\n(b) The shipping policy is \"When all products are ready\": all product have been reserved.\n"
                  " * Done: The transfer has been processed.\n"
                  " * Cancelled: The transfer has been cancelled.")
-    is_approval_required = fields.Boolean('Is Required Approval', help="authority to approve to transfer request")
+    is_approval_required = fields.Boolean('Is Required Approval', help="authority to approve to transfer request", compute ='_compute_approval',store=True)
+
+    @api.depends('location_id')
+    def _compute_approval(self):
+        location = self.location_id
+        print(location.name,"location")
+        if location.is_approval_required == True:
+            self.is_approval_required = True
 
     @api.depends('move_type', 'immediate_transfer', 'move_lines.state', 'move_lines.picking_id')
     def _compute_state(self):

@@ -5,19 +5,23 @@
         <field name="model">stock.picking</field>
         <field name="inherit_id" ref="stock.view_picking_form"/>
         <field name="arch" type="xml">
-            <xpath expr="//field[@name='state']" position="replace">
-                        <field name="state" widget="statusbar" statusbar_visible="draft,waiting_for_approval,confirmed,assigned,done" />
+            <!--<xpath expr="//field[@name='state']" position="replace">
+                <field name="state" widget="statusbar"
+                       statusbar_visible="draft,waiting_for_approval,confirmed,assigned,done"/>
+
+            </xpath>-->
+            <xpath expr="//button[@name='action_confirm']" position="after">
+                <button name="approve"
+                        attrs="{'invisible': [('approval_visibility', '=', False)]}"
+                        string="Approve" class="oe_highlight" type="object" groups="base.group_user"/>
 
             </xpath>
-                       <xpath expr="//button[@name='action_confirm']" position="after">
-                       <button name="approve" attrs="{'invisible': [('state', 'in', ('draft','confirmed','assigned','done','cancel','waiting'))]}" string="Approve"  class="oe_highlight" type="object" groups="base.group_user"/>
-
-                       </xpath>
             <xpath expr="//field[@name='picking_type_id']" position="after">
-<field name="is_approval_required"/>
-                       </xpath>
+                <field name="is_approved" invisible="1"/>
+                <field name="approval_visibility" invisible="1"/>
+            </xpath>
 
         </field>
     </record>
 </odoo>
-<!--                    <button name="button_mark_done" attrs="{'invisible': ['|', '|', ('state', 'in', ('draft', 'cancel', 'done', 'to_close')), ('qty_producing', '=', 0), ('move_raw_ids', '!=', [])]}" string="Validate" type="object" class="oe_highlight"-->
+        <!--                    <button name="button_mark_done" attrs="{'invisible': ['|', '|', ('state', 'in', ('draft', 'cancel', 'done', 'to_close')), ('qty_producing', '=', 0), ('move_raw_ids', '!=', [])]}" string="Validate" type="object" class="oe_highlight"-->

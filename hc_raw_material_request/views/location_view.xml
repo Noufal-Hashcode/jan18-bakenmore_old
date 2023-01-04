@@ -19,6 +19,10 @@
                         groups="stock.group_stock_multi_locations" context="{'default_company_id': company_id}"
                 />
             </xpath>
+            <xpath expr="//field[@name='scrap_location']" position="before">
+                <field name="is_approval_required"/>
+
+            </xpath>
         </field>
     </record>
 

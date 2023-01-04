@@ -1,115 +1,52 @@
 # -*- coding: utf-8 -*-
 from odoo import api, models, fields, _
 from collections import defaultdict
+from odoo.exceptions import Warning, UserError, ValidationError
+from datetime import datetime, date
 
 
 class StockPicking(models.Model):
-    _inherit = ['stock.picking']
+    _inherit = 'stock.picking'
 
-    state = fields.Selection([
-            ('draft', 'Draft'),
-            ('waiting_for_approval', 'Waiting For Approval'),
-            ('waiting', 'Waiting Another Operation'),
-            ('confirmed', 'Waiting'),
-            ('assigned', 'Ready'),
-            ('done', 'Done'),
-            ('cancel', 'Cancelled'),
-        ],string='Status', compute='_compute_state',copy=False, index=True,store=True, readonly=True, tracking=True,
-            help=" * Draft: The transfer is not confirmed yet. Reservation doesn't apply.\n"
-                 " * Waiting another operation: This transfer is waiting for another operation before being ready.\n"
-                 " * Waiting: The transfer is waiting for the availability of some products.\n(a) The shipping policy is \"As soon as possible\": no product could be reserved.\n(b) The shipping policy is \"When all products are ready\": not all the products could be reserved.\n"
-                 " * Ready: The transfer is ready to be processed.\n(a) The shipping policy is \"As soon as possible\": at least one product has been reserved.\n(b) The shipping policy is \"When all products are ready\": all product have been reserved.\n"
-                 " * Done: The transfer has been processed.\n"
-                 " * Cancelled: The transfer has been cancelled.")
-    is_approval_required = fields.Boolean('Is Required Approval', help="authority to approve to transfer request")
+    is_approved = fields.Boolean(string='Approved', copy=False)
+    approval_visibility = fields.Boolean(string='Approval Visibility', store=True,
+                                          compute='_compute_approval_visibility', copy=False)
 
-    @api.depends('move_type', 'immediate_transfer', 'move_lines.state', 'move_lines.picking_id')
-    def _compute_state(self):
-        ''' State of a picking depends on the state of its related stock.move
-        - Draft: only used for "planned pickings"
-        - Waiting: if the picking is not ready to be sent so if
-          - (a) no quantity could be reserved at all or if
-          - (b) some quantities could be reserved and the shipping policy is "deliver all at once"
-        - Waiting another move: if the picking is waiting for another move
-        - Ready: if the picking is ready to be sent so if:
-          - (a) all quantities are reserved or if
-          - (b) some quantities could be reserved and the shipping policy is "as soon as possible"
-        - Done: if the picking is done.
-        - Cancelled: if the picking is cancelled
-        '''
-        picking_moves_state_map = defaultdict(dict)
-        picking_move_lines = defaultdict(set)
-        for move in self.env['stock.move'].search([('picking_id', 'in', self.ids)]):
-            picking_id = move.picking_id
-            move_state = move.state
-            picking_moves_state_map[picking_id.id].update({
-                'any_draft': picking_moves_state_map[picking_id.id].get('any_draft', False) or move_state == 'draft',
-                'all_cancel': picking_moves_state_map[picking_id.id].get('all_cancel', True) and move_state == 'cancel',
-                'all_cancel_done': picking_moves_state_map[picking_id.id].get('all_cancel_done',
-                                                                              True) and move_state in (
-                                   'cancel', 'done'),
-                'all_done_are_scrapped': picking_moves_state_map[picking_id.id].get('all_done_are_scrapped', True) and (
-                    move.scrapped if move_state == 'done' else True),
-                'any_cancel_and_not_scrapped': picking_moves_state_map[picking_id.id].get('any_cancel_and_not_scrapped',
-                                                                                          False) or (
-                                                           move_state == 'cancel' and not move.scrapped),
-            })
-            picking_move_lines[picking_id.id].add(move.id)
-        for picking in self:
-            picking_id = (picking.ids and picking.ids[0]) or picking.id
-            if not picking_moves_state_map[picking_id]:
-                picking.state = 'draft'
-            elif picking_moves_state_map[picking_id]['any_draft']:
-                picking.state = 'draft'
-            elif picking_moves_state_map[picking_id]['all_cancel']:
-                picking.state = 'cancel'
-            elif picking_moves_state_map[picking_id]['all_cancel_done']:
-                if picking_moves_state_map[picking_id]['all_done_are_scrapped'] and picking_moves_state_map[picking_id][
-                    'any_cancel_and_not_scrapped']:
-                    picking.state = 'cancel'
-                else:
-                    picking.state = 'done'
+    @api.depends('state', 'is_approved', 'location_id')
+    def _compute_approval_visibility(self):
+        for record in self:
+            if record.state != 'assigned':
+                record.approval_visibility = False
             else:
-                relevant_move_state = self.env['stock.move'].browse(
-                    picking_move_lines[picking_id])._get_relevant_state_among_moves()
-                if picking.immediate_transfer and relevant_move_state not in ('draft', 'cancel', 'done'):
-                    picking.state = 'draft'
-                elif relevant_move_state == 'partially_available':
-                    picking.state = 'draft'
+                if record.location_id:
+                    if record.location_id.is_approval_required:
+                        record.approval_visibility = True
+                        if record.is_approved:
+                            record.approval_visibility = False
+                    else:
+                        record.approval_visibility = False
                 else:
-                    picking.state = relevant_move_state
-            if picking.is_approval_required == True:
-                picking.state = 'waiting_for_approval'
+                    record.approval_visibility = False
 
     def approve(self):
-        self.state='assigned'
+        self.is_approved = True
 
-    # def action_confirm(self):
-    #     for picking in self:
-    #         picking._check_company()
-    #         if picking.is_approval_required == True:
-    #             picking.mapped('package_level_ids').filtered(lambda pl: pl.state == 'waiting_for_approval' and not pl.move_ids)._generate_moves()
-    #         else:
-    #             picking.mapped('package_level_ids').filtered(
-    #                 lambda pl: pl.state == 'draft' and not pl.move_ids)._generate_moves()
-    #
-    #     # call `_action_confirm` on every draft move
-    #         picking.mapped('move_lines') \
-    #             .filtered(lambda move: move.state == 'draft') \
-    #             ._action_confirm()
-    #
-    #         # run scheduler for moves forecasted to not have enough in stock
-    #         self.mapped('move_lines').filtered(
-    #             lambda move: move.state not in ('draft', 'cancel', 'done'))._trigger_scheduler()
-    #         return True
+    def button_validate(self):
+        print("button_validate")
+        if self.location_id:
+            if self.location_id.is_approval_required:
+                if not self.is_approved:
+                    raise ValidationError(
+                        _('You are not allowed to validate without approval'))
+        return super().button_validate()
 
 
 class MrpProduction(models.Model):
     _inherit = 'mrp.production'
 
-    picking_ids = fields.Many2many('stock.picking', compute='_compute_picking_ids', string='Picking associated to this manufacturing order',store=True)
+    picking_ids = fields.Many2many('stock.picking', compute='_compute_picking_ids',
+                                   string='Picking associated to this manufacturing order', store=True)
     delivery_count = fields.Integer(string='Delivery Orders', compute='_compute_picking_ids', store=True)
-
 
     def action_confirm(self):
         self._check_company()
@@ -139,23 +76,23 @@ class MrpProduction(models.Model):
             production.move_raw_ids._adjust_procure_method()
 
             if production.move_raw_ids:
-                dry_items=[]
+                dry_items = []
                 other_item = []
                 source_location = self.env['stock.location'].search([('name', '=', 'Dry Store')])
                 for i in production.move_raw_ids:
-                    if i.product_id.categ_id.name == 'Dry':
-                        picking_type = self.env['stock.picking.type'].search([('sequence_code', '=', 'INT TRF')])
-                        move_data_dict = {
-                            'name': 'Mo Picking Move',
-                            'location_id': picking_type.default_location_src_id.id,
-                            'location_dest_id': picking_type.default_location_dest_id.id,
-                            'product_id': i.product_id.id,
-                            'product_uom': i.product_uom.id,
-                            'product_uom_qty': i.product_uom_qty,
-                        }
-                        dry_items.append((0, 0,move_data_dict))
-                    else:
-                        picking_type = production.picking_type_id
+                    if i.product_id.categ_id.name != 'Dry':
+                        #     picking_type = self.env['stock.picking.type'].search([('sequence_code', '=', 'INT TRF')])
+                        #     move_data_dict = {
+                        #         'name': 'Mo Picking Move',
+                        #         'location_id': picking_type.default_location_src_id.id,
+                        #         'location_dest_id': picking_type.default_location_dest_id.id,
+                        #         'product_id': i.product_id.id,
+                        #         'product_uom': i.product_uom.id,
+                        #         'product_uom_qty': i.product_uom_qty,
+                        #     }
+                        #     dry_items.append((0, 0,move_data_dict))
+                        # else:  	PC
+                        picking_type = self.env['stock.picking.type'].search([('sequence_code', '=', 'PC')])
                         move_data_dict = {
                             'name': 'Mo Picking Move',
                             'location_id': picking_type.default_location_src_id.id,
@@ -165,33 +102,33 @@ class MrpProduction(models.Model):
                             'product_uom_qty': i.product_uom_qty,
                         }
                         other_item.append((0, 0, move_data_dict))
-                if dry_items:
-                    picking_type = self.env['stock.picking.type'].search([('sequence_code', '=', 'INT TRF')])
-
-                    hc_picking = {
-                        'picking_type_id': picking_type.id,
-                        'location_id': source_location.id,
-                        'location_dest_id': picking_type.default_location_dest_id.id,
-                        'move_ids_without_package': dry_items,
-                        'is_approval_required': True,
-                        'group_id': production.procurement_group_id.id,
-                        # 'state': 'draft'
-                        }
-                    picking_ids.append((0, 0,hc_picking))
-                    delivery_count = delivery_count+1
+                # if dry_items:
+                #     picking_type = self.env['stock.picking.type'].search([('sequence_code', '=', 'INT TRF')])
+                #
+                #     hc_picking = {
+                #         'picking_type_id': picking_type.id,
+                #         'location_id': source_location.id,
+                #         'location_dest_id': picking_type.default_location_dest_id.id,
+                #         'move_ids_without_package': dry_items,
+                #         'is_approval_required': True,
+                #         'group_id': production.procurement_group_id.id,
+                #         # 'state': 'draft'
+                #         }
+                #     picking_ids.append((0, 0,hc_picking))
+                #     delivery_count = delivery_count+1
                 if other_item:
-                    picking_type = production.picking_type_id
+                    picking_type = self.env['stock.picking.type'].search([('sequence_code', '=', 'PC')])
 
                     hc_picking_other = {
                         'picking_type_id': picking_type.id,
                         'location_id': picking_type.default_location_src_id.id,
                         'location_dest_id': picking_type.default_location_dest_id.id,
                         'move_ids_without_package': other_item,
-                        'is_approval_required': False,
+                        # 'is_approval_required': False,
                         'group_id': production.procurement_group_id.id,
                         'state': 'draft'
                     }
-                    picking_ids.append((0, 0,hc_picking_other))
+                    picking_ids.append((0, 0, hc_picking_other))
                     delivery_count = delivery_count + 1
                 production.write({
                     'picking_ids': picking_ids,
@@ -200,16 +137,104 @@ class MrpProduction(models.Model):
             # (production.move_raw_ids | production.move_finished_ids)._action_confirm(merge=False)
             (production.move_finished_ids)._action_confirm(merge=False)
             production.workorder_ids._action_confirm()
-            production.delivery_count= delivery_count
+            production.delivery_count = delivery_count
         # run scheduler for moves forecasted to not have enough in stock
         self.move_raw_ids._trigger_scheduler()
         self.picking_ids.filtered(
             lambda p: p.state not in ['cancel', 'done']).action_confirm()
         # Force confirm state only for draft production not for more advanced state like
         # 'progress' (in case of backorders with some qty_producing)
+        # self.picking_ids
+        pickk = self.picking_ids.button_validate()
+        print("self.picking_ids", self.picking_ids)
+        for picking in self.picking_ids:
+            for mov_line in picking.move_line_ids_without_package:
+                mov_line.qty_done = mov_line.product_uom_qty
+        # dddd
+        print("sdjskfkfhnsdfpickk", pickk)
+        print("pickk.get('name')", pickk.get('name'))
+        if pickk.get('name') == 'Immediate Transfer?':
+            print("#############################")
+            back_order = self.env['stock.backorder.confirmation'].with_context(pickk['context']).process()
         self.filtered(lambda mo: mo.state == 'draft').state = 'confirmed'
+        if self.move_raw_ids:
+            print("self.move_raw_ids", self.move_raw_ids)
+            for component in self.move_raw_ids:
+                print("component###############", component)
+                print("component.move_line_ids", component.move_line_ids)
+                # fff
+                for move_line in component.move_line_ids:
+                    print("move_line", move_line)
+                    component_product = move_line.product_id
+                    print("component_product", component_product)
+                    if component_product:
+                        print("move_line.lot_id", move_line.lot_id)
+                        print("move_line.lot_id.product_qty", move_line.lot_id.product_qty)
+                        if not move_line.lot_id:
+                            lot = self.env['stock.production.lot'].search(
+                                [('product_id', '=', component_product.id),
+                                 ('company_id', '=', move_line.company_id.id),
+                                 ('product_qty', '>=', move_line.qty_done)], limit=1)
+
+                            if lot:
+                                move_line.lot_id = lot
+                            # move_line.lot_id = self.env['stock.production.lot'].create({
+                            #     'product_id': move_line.product_id.id,
+                            #     'company_id': move_line.company_id.id,
+                            #     'name': self.name
+                            # })
+
         return True
 
+    def button_mark_done(self):
+        for rec in self:
+            if rec.move_raw_ids:
+                for component in rec.move_raw_ids:
+                    print("sadsaj jjjjss", component.move_line_ids)
+                    for move_line in component.move_line_ids:
+                        print("dsfjsdkjfsd jdd", move_line, move_line.qty_done, move_line.lot_id)
+                        component_product = move_line.product_id
+                        if component_product:
+                            if not move_line.lot_id:
+                                print("uiss...ss", move_line, move_line.qty_done)
+                                # stock_quant_j = self.env['stock.quant'].search(
+                                #     [
+                                #         ('product_id', '=', component_product.id),
+                                #         ('location_id', '=', rec.location_src_id.id),
+                                #         ('available_quantity', '>=', move_line.qty_done),
+                                #         ('lot_id', '!=', False)], limit=1)
+                                # print("duuuuuusiisis", stock_quant_j)
+                                # if not stock_quant_j:
+                                #     stock_quant_j = self.env['stock.quant'].search(
+                                #         [
+                                #             ('product_id', '=', component_product.id),
+                                #             ('location_id', '=', rec.location_src_id.id),
+                                #             ('available_quantity', '>=', 1),
+                                #             ('lot_id', '!=', False)], limit=1)
+                                # print("sdfdskjfskdljfs", stock_quant_j, )
+                                # lot = stock_quant_j.lot_id.id
 
+
+                                current_date = datetime.now()
+                                # lots = self.env['stock.production.lot'].search(
+                                #     [('product_id', '=', component_product.id),
+                                #      ('company_id', '=', move_line.company_id.id),('expiration_date', '!=', False)
+                                #      ('product_qty', '>=', move_line.qty_done),('expiration_date', '>=', current_date)])
+                                # lot = self.get_expireing_lot(lots)
+                                lot = self.env['stock.production.lot'].search(
+                                    [('product_id', '=', component_product.id),
+                                     ('company_id', '=', move_line.company_id.id),
+                                     ('product_qty', '>=', move_line.qty_done),
+                                     ])
+                                # lot = self.get_expireing_lot(lots)
+                                if lot:
+                                    move_line.lot_id = lot
+                        move_line.qty_done = component.product_uom_qty
+                component.quantity_done = component.product_uom_qty
+        # eee
+        res = super(MrpProduction, self).button_mark_done()
+        return res
+
+    # def get_expireing_lot(self, lots):
 
 

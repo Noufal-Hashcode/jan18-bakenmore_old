@@ -151,25 +151,15 @@ class MrpProduction(models.Model):
             for mov_line in picking.move_line_ids_without_package:
                 mov_line.qty_done = mov_line.product_uom_qty
         # dddd
-        print("sdjskfkfhnsdfpickk", pickk)
-        print("pickk.get('name')", pickk.get('name'))
         if pickk.get('name') == 'Immediate Transfer?':
-            print("#############################")
             back_order = self.env['stock.backorder.confirmation'].with_context(pickk['context']).process()
         self.filtered(lambda mo: mo.state == 'draft').state = 'confirmed'
         if self.move_raw_ids:
-            print("self.move_raw_ids", self.move_raw_ids)
             for component in self.move_raw_ids:
-                print("component###############", component)
-                print("component.move_line_ids", component.move_line_ids)
                 # fff
                 for move_line in component.move_line_ids:
-                    print("move_line", move_line)
                     component_product = move_line.product_id
-                    print("component_product", component_product)
                     if component_product:
-                        print("move_line.lot_id", move_line.lot_id)
-                        print("move_line.lot_id.product_qty", move_line.lot_id.product_qty)
                         if not move_line.lot_id:
                             lot = self.env['stock.production.lot'].search(
                                 [('product_id', '=', component_product.id),
@@ -225,7 +215,7 @@ class MrpProduction(models.Model):
                                     [('product_id', '=', component_product.id),
                                      ('company_id', '=', move_line.company_id.id),
                                      ('product_qty', '>=', move_line.qty_done),
-                                     ])
+                                     ],limit=1)
                                 # lot = self.get_expireing_lot(lots)
                                 if lot:
                                     move_line.lot_id = lot

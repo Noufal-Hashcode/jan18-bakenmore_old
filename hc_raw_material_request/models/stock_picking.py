@@ -145,14 +145,16 @@ class MrpProduction(models.Model):
         # Force confirm state only for draft production not for more advanced state like
         # 'progress' (in case of backorders with some qty_producing)
         # self.picking_ids
-        pickk = self.picking_ids.button_validate()
+
         print("self.picking_ids", self.picking_ids)
         for picking in self.picking_ids:
             for mov_line in picking.move_line_ids_without_package:
                 mov_line.qty_done = mov_line.product_uom_qty
+
+        pickk = self.picking_ids.button_validate()
         # dddd
-        if pickk.get('name') == 'Immediate Transfer?':
-            back_order = self.env['stock.backorder.confirmation'].with_context(pickk['context']).process()
+        # if pickk.get('name') == 'Immediate Transfer?':
+        #     back_order = self.env['stock.backorder.confirmation'].with_context(pickk['context']).process()
         self.filtered(lambda mo: mo.state == 'draft').state = 'confirmed'
         if self.move_raw_ids:
             for component in self.move_raw_ids:

@@ -185,9 +185,9 @@ class MrpProduction(models.Model):
                     print("sadsaj jjjjss", component.move_line_ids)
                     if not component.move_line_ids:
                         lot = self.env['stock.production.lot'].search(
-                            [('product_id', '=', component_product.id),
-                             ('company_id', '=', move_line.company_id.id),
-                             ('product_qty', '>=', move_line.qty_done),
+                            [('product_id', '=', component.product_id.id),
+                             ('company_id', '=', component.company_id.id),
+                             ('product_qty', '>=', component.product_uom_qty),
                              ], limit=1)
                         # lot = self.get_expireing_lot(lots)
                         # if lot:

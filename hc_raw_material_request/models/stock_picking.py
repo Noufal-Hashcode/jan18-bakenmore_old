@@ -183,6 +183,24 @@ class MrpProduction(models.Model):
             if rec.move_raw_ids:
                 for component in rec.move_raw_ids:
                     print("sadsaj jjjjss", component.move_line_ids)
+                    if not component.move_line_ids:
+                        lot = self.env['stock.production.lot'].search(
+                            [('product_id', '=', component_product.id),
+                             ('company_id', '=', move_line.company_id.id),
+                             ('product_qty', '>=', move_line.qty_done),
+                             ], limit=1)
+                        # lot = self.get_expireing_lot(lots)
+                        # if lot:
+                        #     move_line.lot_id = lot
+                        self.env['stock.move.line'].create({
+                            'move_id': component.id,
+                            'lot_id': lot.id if lot else False,
+                            'qty_done': component.product_uom_qty,
+                            'product_id': component.product_id.id,
+                            'product_uom_id': component.product_uom.id,
+                            'location_id': component.location_id.id,
+                            'location_dest_id': component.location_dest_id.id,
+                        })
                     for move_line in component.move_line_ids:
                         print("dsfjsdkjfsd jdd", move_line, move_line.qty_done, move_line.lot_id)
                         component_product = move_line.product_id

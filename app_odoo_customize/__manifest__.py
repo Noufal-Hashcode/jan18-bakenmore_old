@@ -27,6 +27,7 @@
     'version': '15.21.10.08',
     'author': 'Sunpop.cn',
     'category': 'Productivity',
+
     'website': 'https://www.sunpop.cn',
     'license': 'LGPL-3',
     'sequence': 2,

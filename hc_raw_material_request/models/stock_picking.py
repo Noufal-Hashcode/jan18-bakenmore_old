@@ -54,9 +54,7 @@ class MrpProduction(models.Model):
         for production in self:
             delivery_count = 0
             picking_ids = []
-            picking_type = self.env['stock.picking.type'].search([('sequence_code', '=', 'MO'),
-                                                                  ('warehouse_id', '=',
-                                                                   production.picking_type_id.warehouse_id.id)])
+            picking_type = self.env['stock.picking.type'].search([('code', '=', 'internal'),('sequence_code', '=', 'INT TRF'),('warehouse_id', '=',production.picking_type_id.warehouse_id.id)])
             if production.bom_id:
                 production.consumption = production.bom_id.consumption
             # In case of Serial number tracking, force the UoM to the UoM of product
@@ -92,11 +90,11 @@ class MrpProduction(models.Model):
                         #     }
                         #     dry_items.append((0, 0,move_data_dict))
                         # else:  	PC
-                        picking_type = self.env['stock.picking.type'].search([('sequence_code', '=', 'MO')])
+                        picking_type = self.env['stock.picking.type'].search([('code', '=', 'internal'),('sequence_code', '=', 'INT TRF')])
                         move_data_dict = {
                             'name': 'Mo Picking Move',
                             'location_id': picking_type.default_location_src_id.id,
-                            'location_dest_id': picking_type.default_location_dest_id.id,
+                            'location_dest_id': production.location_src_id.id,
                             'product_id': i.product_id.id,
                             'product_uom': i.product_uom.id,
                             'product_uom_qty': i.product_uom_qty,
@@ -117,12 +115,12 @@ class MrpProduction(models.Model):
                 #     picking_ids.append((0, 0,hc_picking))
                 #     delivery_count = delivery_count+1
                 if other_item:
-                    picking_type = self.env['stock.picking.type'].search([('sequence_code', '=', 'MO')])
+                    picking_type = self.env['stock.picking.type'].search([('code', '=', 'internal'),('sequence_code', '=', 'INT TRF')])
 
                     hc_picking_other = {
                         'picking_type_id': picking_type.id,
                         'location_id': picking_type.default_location_src_id.id,
-                        'location_dest_id': picking_type.default_location_dest_id.id,
+                        'location_dest_id': production.location_src_id.id,
                         'move_ids_without_package': other_item,
                         # 'is_approval_required': False,
                         'group_id': production.procurement_group_id.id,

@@ -3,7 +3,7 @@
     'name': 'Raw Material Request',
     "author": "Hashcode IT Solutions",
     'website': 'https://hashcodeit.com/',
-    'version': '15.0.0.7',
+    'version': '15.0.0.8',
     'support': 'info@hashcodeit.com',
     'category': '',
     'summary': 'This module adds raw material request',
